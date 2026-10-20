@@ -1,1 +1,21 @@
-{"name":"Vipassana Practice Companion","short_name":"Vipassana","description":"Vipassana timer, daily reminders, progress tracking and PDF summaries.","start_url":".","scope":".","display":"standalone","orientation":"portrait","background_color":"#eef2f0","theme_color":"#1f6f6b","icons":[{"src":"icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},{"src":"icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]}
+{
+  "id": "./",
+  "name": "Vipassana Practice Companion",
+  "short_name": "Vipassana",
+  "description": "Vipassana timer with a lock screen widget, flexible alerts, a practice calendar and PDF summaries.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f2f2ee",
+  "theme_color": "#f2f2ee",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ],
+  "shortcuts": [
+    {"name": "Sit 15 minutes", "short_name": "Sit 15", "url": "./?start=short", "icons": [{"src": "icon-192.png", "sizes": "192x192"}]},
+    {"name": "Full 30-minute sit", "short_name": "Full 30", "url": "./?start=full", "icons": [{"src": "icon-192.png", "sizes": "192x192"}]},
+    {"name": "Practice calendar", "short_name": "Calendar", "url": "./?tab=cal", "icons": [{"src": "icon-192.png", "sizes": "192x192"}]}
+  ]
+}
