@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mindful Buddy</title>
+<meta name="description" content="Mindful Buddy: a Vipassana meditation timer with a lock screen widget, flexible alerts and a full practice calendar.">
+<meta name="theme-color" content="#f2f2ee" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111514" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600&display=swap" rel="stylesheet">
+<style>
+/* ===== tokens ===== */
+:root{
+  --bg:#f2f2ee;--surface:#ffffff;--surface-2:#e9eae4;--ink:#171c1a;--mute:#5b625e;--line:#e1e2dc;--line-2:#cdd0c8;
+  --accent:#2c6b5f;--on-accent:#ffffff;
+  --ana:#2c6b5f;--vip:#a8660f;--met:#a24a68;
+  --h0:#e9eae4;--h1:#cfe2dc;--h2:#93c0b4;--h3:#4f8f80;--h4:#2c6b5f;--h-ink:#ffffff;
+  --flame:#e8a33a;--flame-in:#f8dc8c;--diya:#9a6332;
+  --warn-bg:#fbf0dc;--warn-line:#e0b25e;--err:#b3412f;
+  --night:#1c2826;--night-2:#2a3835;--night-ink:#eef2ef;--night-mute:#a9b8b3;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111514;--surface:#181d1c;--surface-2:#212726;--ink:#e8ece9;--mute:#9aa49f;--line:#283030;--line-2:#36403e;
+  --accent:#6cb8a6;--on-accent:#0d1514;
+  --ana:#6cb8a6;--vip:#e2a54e;--met:#df8fab;
+  --h0:#212726;--h1:#1f3d36;--h2:#2b5c51;--h3:#428a7a;--h4:#6cb8a6;--h-ink:#0d1514;
+  --diya:#c38a55;--warn-bg:#30281a;--warn-line:#8a6a2c;--err:#ef8a78;
+  --night:#0b0f0e;--night-2:#1a2220;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111514;--surface:#181d1c;--surface-2:#212726;--ink:#e8ece9;--mute:#9aa49f;--line:#283030;--line-2:#36403e;
+  --accent:#6cb8a6;--on-accent:#0d1514;
+  --ana:#6cb8a6;--vip:#e2a54e;--met:#df8fab;
+  --h0:#212726;--h1:#1f3d36;--h2:#2b5c51;--h3:#428a7a;--h4:#6cb8a6;--h-ink:#0d1514;
+  --diya:#c38a55;--warn-bg:#30281a;--warn-line:#8a6a2c;--err:#ef8a78;
+  --night:#0b0f0e;--night-2:#1a2220;
+  color-scheme:dark}
+
+/* ===== base ===== */
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Figtree,system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+[hidden]{display:none!important}
+.app{max-width:600px;margin:0 auto;padding:calc(8px + env(safe-area-inset-top,0px)) 16px calc(96px + env(safe-area-inset-bottom,0px))}
+h1{font:600 1.75rem/1.15 Fraunces,Georgia,serif;letter-spacing:-.01em;margin:0}
+h2{font-size:1.05rem;font-weight:600;line-height:1.3;margin:0}
+h3{font-size:.95rem;font-weight:600;margin:0}
+p{margin:0}
+.note{font-size:.875rem;color:var(--mute)}
+.lead{color:var(--mute);margin-top:4px}
+a{color:var(--accent);font-weight:600}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--vip);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:10px;height:52px}
+.mark{width:28px;height:28px;flex:none}
+.brand{font-weight:700;letter-spacing:-.01em}
+.top .note{margin-left:auto}
+.hello{margin:10px 0 16px;display:flex;gap:14px;align-items:center}
+.hello .lamp{width:56px;height:56px;flex:none}
+
+/* surfaces */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:12px}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.stack>*+*{margin-top:12px}
+.split{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 20px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface);font-weight:600;cursor:pointer;transition:transform .12s ease,background-color .15s ease}
+.btn:hover{background:var(--surface-2)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.text{border-color:transparent;background:transparent;color:var(--accent);padding:0 10px}
+.btn.text:hover{background:var(--surface-2)}
+.btn.small{min-height:36px;padding:0 14px;font-size:.9rem}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.ib{width:40px;height:40px;border-radius:50%;border:1px solid var(--line-2);background:var(--surface);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none;font-size:1.25rem;line-height:1}
+.ib:hover{background:var(--surface-2)}.ib:disabled{opacity:.35;cursor:not-allowed}
+.ib svg{width:18px;height:18px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row.center{justify-content:center}
+
+/* chips and segmented */
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line-2);background:transparent;cursor:pointer;font-weight:500;font-size:.92rem}
+.chips button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.seg{display:flex;background:var(--surface-2);border-radius:999px;padding:3px;gap:2px}
+.seg button{flex:1;min-height:36px;border:0;border-radius:999px;background:transparent;cursor:pointer;font-weight:600;font-size:.9rem;color:var(--mute)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink)}
+
+/* switch rows */
+.opt{display:flex;gap:14px;align-items:flex-start;padding:14px 0;border-top:1px solid var(--line)}
+.opt:first-child{border-top:0;padding-top:2px}
+.opt .txt{flex:1;min-width:0}
+.opt .txt p{font-size:.875rem;color:var(--mute);margin-top:2px}
+.opt .more{margin-top:12px}
+.switch{appearance:none;-webkit-appearance:none;width:46px;height:28px;border-radius:999px;background:var(--line-2);position:relative;cursor:pointer;flex:none;margin:2px 0 0;transition:background-color .2s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .2s}
+.switch:checked{background:var(--accent)}
+.switch:checked::after{transform:translateX(18px)}
+
+/* fields */
+label.f{display:block;font-weight:600;font-size:.9rem;margin:14px 0 6px}
+label.f span{float:right;font-weight:400;color:var(--mute)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+input[type=number],input[type=time],input[type=text],select,textarea{min-height:44px;padding:8px 12px;border:1px solid var(--line-2);border-radius:12px;background:var(--bg)}
+textarea{width:100%;min-height:0;resize:vertical}
+.w100{width:100%}
+.tm{display:flex;gap:8px;align-items:center;margin:6px 0}.tm input{flex:1}
+
+/* timer */
+.ring{position:relative;width:min(250px,68vw);aspect-ratio:1;margin:8px auto 6px}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .t{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.time{font:400 3.1rem/1 Fraunces,Georgia,serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.ph{font-weight:600;margin-top:8px}
+.guide{color:var(--mute);min-height:3.1em;margin:4px auto 14px;max-width:42ch;text-align:center;font-size:.95rem}
+.segs{display:flex;gap:4px;height:8px;margin:0 0 6px}
+.segs i{display:block;border-radius:4px;background:var(--surface-2);overflow:hidden}
+.segs b{display:block;height:100%;width:0}
+.seglab{display:flex;gap:4px;font-size:.75rem;color:var(--mute);margin-bottom:14px}
+.seglab span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+
+/* custom editor */
+.cust{border:0;margin:12px 0 0;padding:14px;background:var(--surface-2);border-radius:14px}
+.cust legend{float:left;width:100%;padding:0;font-weight:600;font-size:.95rem;margin-bottom:6px}
+.crow{display:flex;align-items:center;gap:8px;padding:6px 0;clear:both}
+.cname{flex:1;display:flex;align-items:center;gap:8px;font-weight:500;line-height:1.25;min-width:0}
+.cname i{width:10px;height:10px;border-radius:50%;flex:none}
+.cname small{display:block;color:var(--mute);font-weight:400;font-size:.78rem;line-height:1.2}
+.crow input{width:64px;text-align:center;font-variant-numeric:tabular-nums;background:var(--surface)}
+.crow input[aria-invalid="true"]{border-color:var(--err);outline-color:var(--err)}
+.crow .ib{background:var(--surface)}
+.unit{color:var(--mute);font-size:.875rem;width:28px}
+.cmsg{font-size:.875rem;color:var(--mute);margin-top:6px}
+.cmsg.err{color:var(--err);font-weight:600}
+.cust:disabled{opacity:.6}
+
+/* goal bar */
+.bar{height:8px;background:var(--surface-2);border-radius:6px;overflow:hidden;margin:8px 0 14px}
+.bar i{display:block;height:100%;background:var(--accent);width:0;border-radius:6px}
+
+/* calendar */
+.wk{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.wk div{font-size:.75rem;color:var(--mute)}
+.wk span{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;margin:0 auto 4px;background:var(--h0);font-size:.8rem;font-weight:600;color:var(--ink)}
+.wk .td{color:var(--ink);font-weight:700}
+.wk .td span{outline:2px solid var(--accent);outline-offset:2px}
+.lv1{background:var(--h1)!important}.lv2{background:var(--h2)!important}
+.lv3{background:var(--h3)!important;color:var(--h-ink)!important}.lv4{background:var(--h4)!important;color:var(--h-ink)!important}
+.collapse{display:grid;grid-template-rows:0fr;transition:grid-template-rows .32s ease}
+.collapse.open{grid-template-rows:1fr}
+.collapse>div{overflow:hidden;min-height:0}
+.calbody{padding-top:16px}
+.calnav{display:flex;align-items:center;gap:8px;margin:14px 0 12px}
+.calnav h3{flex:1;text-align:center;font-size:1rem}
+.dow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:.75rem;color:var(--mute);text-align:center;margin-bottom:4px}
+.month{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.month button{aspect-ratio:1;border:0;border-radius:10px;background:var(--h0);font-size:.85rem;font-variant-numeric:tabular-nums;cursor:pointer;color:var(--ink);padding:0;position:relative}
+.month button.fut{background:transparent;color:var(--mute);cursor:default}
+.month button.td{font-weight:700;outline:2px solid var(--accent);outline-offset:-2px}
+.month button[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:1px}
+.month .pad{visibility:hidden}
+.year{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 12px}
+.mini{display:flex;flex-direction:column;justify-content:flex-start;border:0;background:transparent;padding:6px;border-radius:10px;cursor:pointer;text-align:left;color:var(--ink)}
+.mini:hover{background:var(--surface-2)}
+.mini b{display:block;font-size:.8rem;margin-bottom:4px}
+.mini .g{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.mini .g i{aspect-ratio:1;border-radius:2px;background:var(--h0)}
+.mini .g i.pad{background:transparent}
+.mini .g i.fut{background:transparent;outline:1px solid var(--line);outline-offset:-1px}
+.mini small{display:block;color:var(--mute);font-size:.72rem;margin-top:4px}
+.legend{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:.75rem;color:var(--mute);margin-top:12px}
+.legend i{width:14px;height:14px;border-radius:4px;display:inline-block}
+.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;padding:12px;background:var(--surface-2);border-radius:12px}
+.sum b{display:block;font:600 1.25rem/1.2 Fraunces,Georgia,serif;font-variant-numeric:tabular-nums}
+.sum small{font-size:.78rem;color:var(--mute)}
+.daydet{margin-top:14px}
+.weekbars svg{width:100%;height:auto;display:block}
+.weekbars text{fill:var(--mute);font:11px Figtree,sans-serif}
+
+/* progress */
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stats div{background:var(--surface-2);border-radius:12px;padding:12px}
+.stats b{display:block;font:600 1.6rem/1.15 Fraunces,Georgia,serif;font-variant-numeric:tabular-nums}
+.stats small{color:var(--mute);font-size:.85rem}
+.h{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line);font-size:.95rem}
+.h:first-child{border-top:0}
+.h em{color:var(--mute);font-style:normal;font-size:.875rem}
+.h>div:last-child{text-align:right;flex:none}
+#chart svg text{fill:var(--mute);font:11px Figtree,sans-serif}
+
+/* banner, toast */
+.banner{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:18px;padding:14px 16px;margin-bottom:12px}
+.banner b{display:block}
+.banner .row{margin-top:10px}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:.92rem;z-index:20;box-shadow:0 6px 20px rgba(0,0,0,.18);max-width:calc(100% - 32px)}
+
+/* bottom tabs */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--surface);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
+.tabs>div{max-width:600px;margin:0 auto;display:flex;gap:4px}
+.tabs button{flex:1;border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0;font-size:.72rem;font-weight:600;color:var(--mute);min-height:52px;border-radius:12px}
+.tabs button svg{width:22px;height:22px;padding:2px 10px;box-sizing:content-box;border-radius:999px}
+.tabs button[aria-selected="true"]{color:var(--ink)}
+.tabs button[aria-selected="true"] svg{background:var(--surface-2)}
+
+/* widget previews (product UI fragments) */
+.lock{background:var(--night);color:var(--night-ink);border-radius:28px;padding:26px 16px 18px;text-align:center}
+.lock-date{font-size:.95rem;font-weight:500;color:var(--night-mute)}
+.lock-time{font:300 4.2rem/1 Figtree,sans-serif;letter-spacing:-.03em;margin:2px 0 16px;font-variant-numeric:tabular-nums}
+.lock-w{display:flex;gap:10px;justify-content:center;align-items:stretch;margin-bottom:18px}
+.w-circ{width:76px;height:76px;border-radius:50%;background:var(--night-2);position:relative;flex:none}
+.w-circ svg.r{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.w-circ .lamp{position:absolute;left:50%;top:9px;width:34px;height:34px;transform:translateX(-50%)}
+.w-circ b{position:absolute;left:0;right:0;bottom:12px;font-size:.95rem;font-variant-numeric:tabular-nums}
+.w-rect{flex:1;max-width:200px;border-radius:20px;background:var(--night-2);padding:10px 12px;text-align:left;display:flex;gap:8px;align-items:center}
+.w-rect .lamp{width:36px;height:36px;flex:none}
+.w-rect b{display:block;font-size:.85rem;line-height:1.25}
+.w-rect small{display:block;font-size:.75rem;color:var(--night-mute);line-height:1.3}
+.w-rect .wb{height:4px;border-radius:3px;background:rgba(255,255,255,.18);margin-top:5px;overflow:hidden}
+.w-rect .wb i{display:block;height:100%;background:var(--flame)}
+.ncard{background:#f5f6f3;color:#171c1a;border-radius:20px;padding:12px 14px;text-align:left}
+.ncard .nh{display:flex;align-items:center;gap:6px;font-size:.75rem;color:#5b625e}
+.ncard .nh img{width:16px;height:16px;border-radius:4px}
+.ncard .nb{display:flex;gap:10px;align-items:center;margin-top:6px}
+.ncard .nb .lamp{width:38px;height:38px;flex:none}
+.ncard strong{display:block;font-size:.95rem}
+.ncard p{font-size:.85rem;color:#3d4440}
+.ncard .na{display:flex;gap:6px;margin-top:10px}
+.ncard .na span{flex:1;text-align:center;font-size:.82rem;font-weight:600;padding:7px 0;border-radius:999px;background:#e3e6e1;color:#1f4f46}
+.home-w{display:flex;gap:12px;align-items:stretch}
+.hw{width:150px;height:150px;border-radius:24px;background:var(--surface-2);padding:14px;display:flex;flex-direction:column;flex:none}
+.hw .lamp{width:44px;height:44px}
+.hw b{font:600 2rem/1 Fraunces,Georgia,serif;margin-top:auto;font-variant-numeric:tabular-nums}
+.hw small{font-size:.78rem;color:var(--mute)}
+.lamp .fl{transform-box:fill-box;transform-origin:50% 100%}
+@media (prefers-reduced-motion:no-preference){
+  .lamp .fl{animation:flick 3.2s ease-in-out infinite}
+  .segs b,.bar i{transition:width .4s ease}
+  .tabpanel{animation:rise .28s ease both}
+}
+@keyframes flick{0%,100%{transform:scale(1,1)}30%{transform:scale(.96,1.05)}60%{transform:scale(1.03,.95)}}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+ol.steps{margin:8px 0 0;padding-left:1.25em}
+ol.steps li{margin:6px 0}
+.status{display:flex;gap:8px;align-items:center;font-size:.9rem}
+.status i{width:9px;height:9px;border-radius:50%;background:var(--line-2);flex:none}
+.status.ok i{background:var(--accent)}.status.bad i{background:var(--err)}
+.qrbox{background:#fff;padding:12px;border-radius:14px;display:inline-block}
+@media (min-width:480px){.stats{grid-template-columns:repeat(4,1fr)}.year{grid-template-columns:repeat(4,1fr)}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="var(--accent)"/><path d="M8 19h16c-1 3.6-4.2 5.5-8 5.5S9 22.6 8 19z" fill="var(--on-accent)"/><path d="M16 8c1.8 2.4 2.6 4.3 2.6 5.8a2.6 2.6 0 0 1-5.2 0c0-1.5.8-3.4 2.6-5.8z" fill="var(--flame)"/></svg>
+    <span class="brand">Mindful Buddy</span>
+    <span class="note" id="dt"></span>
+  </header>
+
+  <div id="banner" class="banner" role="alert" hidden>
+    <b id="bt"></b><span id="bm"></span>
+    <div class="row"><button class="btn primary small" id="bgo">Sit now</button><button class="btn small" id="bsn">Snooze</button><button class="btn text small" id="bx">Dismiss</button></div>
+  </div>
+
+  <!-- ===== TODAY ===== -->
+  <section id="tab-today" class="tabpanel" aria-labelledby="hi">
+    <div class="hello">
+      <span class="lamp" id="hlamp" aria-hidden="true"></span>
+      <div><h1 id="hi">Good morning</h1><p class="lead" id="hstat"></p></div>
+    </div>
+
+    <div class="card">
+      <div class="chips" id="progs" role="group" aria-label="Session length"></div>
+      <fieldset class="cust" id="cust" hidden>
+        <legend>Your custom sit</legend>
+        <div class="crow" data-k="a"><span class="cname"><i style="background:var(--ana)"></i><span>Anapana<small>1 to 60 min</small></span></span><button type="button" class="ib" data-d="-1" aria-label="Shorter Anapana">&minus;</button><input id="ca" type="number" inputmode="numeric" min="1" max="60" step="1" aria-label="Anapana minutes" aria-describedby="cmsg"><button type="button" class="ib" data-d="1" aria-label="Longer Anapana">+</button><span class="unit">min</span></div>
+        <div class="crow" data-k="v"><span class="cname"><i style="background:var(--vip)"></i><span>Vipassana<small>1 to 90 min</small></span></span><button type="button" class="ib" data-d="-1" aria-label="Shorter Vipassana">&minus;</button><input id="cv" type="number" inputmode="numeric" min="1" max="90" step="1" aria-label="Vipassana minutes" aria-describedby="cmsg"><button type="button" class="ib" data-d="1" aria-label="Longer Vipassana">+</button><span class="unit">min</span></div>
+        <div class="crow" data-k="m"><span class="cname"><i style="background:var(--met)"></i><span>Metta<small>0 to 30 min</small></span></span><button type="button" class="ib" data-d="-1" aria-label="Shorter Metta">&minus;</button><input id="cm" type="number" inputmode="numeric" min="0" max="30" step="1" aria-label="Metta minutes" aria-describedby="cmsg"><button type="button" class="ib" data-d="1" aria-label="Longer Metta">+</button><span class="unit">min</span></div>
+        <p class="cmsg" id="cmsg" aria-live="polite"></p>
+      </fieldset>
+
+      <div class="ring"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="45" fill="none" stroke="var(--surface-2)" stroke-width="5"/><circle id="arc" cx="50" cy="50" r="45" fill="none" stroke="var(--ana)" stroke-width="5" stroke-linecap="round" stroke-dasharray="282.7" stroke-dashoffset="282.7"/></svg>
+        <div class="t"><div class="time" id="time" role="timer" aria-live="off">30:00</div><div class="ph" id="ph">Ready</div></div></div>
+      <p class="guide" id="guide"></p>
+      <div class="segs" id="segs" aria-hidden="true"></div>
+      <div class="seglab" id="seglab" aria-hidden="true"></div>
+      <div id="pre"><label class="f" for="s1">Stress right now <span id="s1v">5</span></label><input type="range" id="s1" min="0" max="10" value="5"></div>
+      <div class="row center" style="margin-top:16px"><button class="btn primary" id="go" style="min-width:140px">Start</button><button class="btn" id="end" hidden>End session</button><button class="btn" id="reset" hidden>Reset</button></div>
+      <p class="note" style="text-align:center;margin-top:10px">Space bar starts or pauses on a keyboard.</p>
+    </div>
+
+    <div class="card" id="post" hidden>
+      <h2>How was the session?</h2>
+      <label class="f" for="s2">Stress now <span id="s2v">5</span></label><input type="range" id="s2" min="0" max="10" value="5">
+      <label class="f" for="sc">How well did you manage to meditate? <span id="scv">70</span></label><input type="range" id="sc" min="0" max="100" value="70">
+      <label class="f" for="nt">Notes (optional)</label><textarea id="nt" rows="2" placeholder="What did you notice in your body or mind?"></textarea>
+      <div class="row" style="margin-top:14px"><button class="btn primary" id="svb">Save session</button><button class="btn" id="ds">Discard</button></div>
+    </div>
+
+    <div class="card" id="calcard">
+      <div class="card-h"><h2 id="calh">Last 7 days</h2><button class="btn text small" id="calx" aria-expanded="false" aria-controls="calwrap">Expand calendar</button></div>
+      <div class="split"><span class="note">Today</span><span class="note num" id="gt"></span></div>
+      <div class="bar"><i id="gb"></i></div>
+      <div class="wk" id="wk"></div>
+      <div class="collapse" id="calwrap"><div><div class="calbody">
+        <div class="seg" role="group" aria-label="Calendar view"><button data-v="week" aria-pressed="false">Week</button><button data-v="month" aria-pressed="true">Month</button><button data-v="year" aria-pressed="false">Year</button></div>
+        <div class="calnav"><button class="ib" id="cprev" aria-label="Previous"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button><h3 id="clab" aria-live="polite"></h3><button class="ib" id="cnext" aria-label="Next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button></div>
+        <div id="cview"></div>
+        <div class="legend" id="clegend"></div>
+        <div class="sum" id="csum"></div>
+        <div class="daydet" id="cday"></div>
+      </div></div></div>
+    </div>
+  </section>
+
+  <!-- ===== PROGRESS ===== -->
+  <section id="tab-prog" class="tabpanel" hidden aria-labelledby="ph-prog">
+    <h1 id="ph-prog" style="margin:10px 0 16px">Progress</h1>
+    <div class="card"><div class="card-h"><h2>Overview</h2><button class="btn text small" id="opencal">Open calendar</button></div>
+      <div class="stats"><div><b id="n">0</b><small>sessions</small></div><div><b id="mn">0</b><small>minutes</small></div><div><b id="st">0</b><small>day streak</small></div><div><b id="bs">0</b><small>best streak</small></div></div></div>
+    <div class="card"><h2>Stress before and after</h2><div id="chart" style="margin-top:10px"></div><p class="note" id="ins" style="margin-top:8px"></p></div>
+    <div class="card"><h2>Reports</h2><p class="note" style="margin:6px 0 12px">Download a PDF summary of today or of the last 7 days.</p><div class="row"><button class="btn" id="pd">Daily PDF</button><button class="btn" id="pw">Weekly PDF</button></div></div>
+    <div class="card"><h2>Recent sessions</h2><div id="hist" style="margin-top:6px"></div><div class="row" style="margin-top:10px"><button class="btn text small" id="clr" hidden>Clear history</button></div></div>
+  </section>
+
+  <!-- ===== WIDGET ===== -->
+  <section id="tab-widget" class="tabpanel" hidden aria-labelledby="ph-w">
+    <h1 id="ph-w" style="margin:10px 0 4px">Lock screen widget</h1>
+    <p class="lead" style="margin-bottom:16px">See your streak and start a sit without opening the app. The lamp burns lower as the day goes on, until you sit.</p>
+    <div class="card">
+      <div class="lock" data-ui aria-label="Preview of the lock screen widget" role="img">
+        <div class="lock-date" id="ldate"></div>
+        <div class="lock-time" id="ltime">07:42</div>
+        <div class="lock-w">
+          <div class="w-circ"><svg class="r" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="6"/><circle id="wring" cx="50" cy="50" r="46" fill="none" stroke="var(--flame)" stroke-width="6" stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="289"/></svg><span class="lamp" id="wl1"></span><b id="wstreak">0</b></div>
+          <div class="w-rect"><span class="lamp" id="wl2"></span><div style="min-width:0;flex:1"><b id="wtitle"></b><small id="wbody"></small><div class="wb"><i id="wbar"></i></div></div></div>
+        </div>
+        <div class="ncard">
+          <div class="nh"><img src="icon-192.png" alt="">Mindful Buddy · now</div>
+          <div class="nb"><span class="lamp" id="wl3"></span><div><strong id="ntitle"></strong><p id="nbody"></p></div></div>
+          <div class="na" id="nacts"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="opt" style="border:0;padding-top:0">
+        <div class="txt"><h2>Pin to lock screen</h2><p>Keeps a quiet card with your streak and two quick-start buttons on your lock screen and in your notification shade.</p></div>
+        <input type="checkbox" class="switch" id="wpin" role="switch" aria-label="Pin to lock screen">
+      </div>
+      <div class="status" id="wstat"><i></i><span></span></div>
+      <h3 style="margin-top:18px">Quick-start buttons</h3>
+      <p class="note" style="margin:2px 0 10px">Pick two sessions to show on the widget.</p>
+      <div class="chips" id="wacts" role="group" aria-label="Widget buttons"></div>
+    </div>
+
+    <div class="card">
+      <h2>Home screen</h2>
+      <p class="note" style="margin:4px 0 14px">Install the app, then press and hold its icon for the same quick starts.</p>
+      <div class="home-w">
+        <div class="hw" data-ui><span class="lamp" id="wl4"></span><b id="hwn">0</b><small>day streak</small></div>
+        <div style="flex:1;min-width:0"><ol class="steps" style="margin-top:0;font-size:.92rem">
+          <li><b>Android:</b> tap Install app (More tab), allow notifications, then switch on Pin to lock screen.</li>
+          <li><b>iPhone:</b> open in Safari, Share, Add to Home Screen, then open it from the icon to allow alerts.</li>
+          <li>Press and hold the app icon for Sit 15, Full 30 and Calendar.</li>
+        </ol></div>
+      </div>
+      <p class="note" style="margin-top:14px">iPhone does not let web apps place widgets on the lock screen. There, the alert itself shows on the lock screen with your streak.</p>
+    </div>
+  </section>
+
+  <!-- ===== ALERTS ===== -->
+  <section id="tab-alerts" class="tabpanel" hidden aria-labelledby="ph-a">
+    <h1 id="ph-a" style="margin:10px 0 4px">Alerts</h1>
+    <p class="lead" style="margin-bottom:16px">Choose what the app tells you about, and how.</p>
+    <div class="card">
+      <div class="status" id="nst"><i></i><span></span></div>
+      <div class="row" style="margin-top:12px"><button class="btn primary" id="nperm">Allow notifications</button><button class="btn" id="ntest">Send a test</button></div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom:8px">What to alert me about</h2>
+      <div class="opt"><div class="txt"><h3>Daily sit reminder</h3><p>At the times you choose, on the days you choose. Skipped once you have sat that day.</p>
+        <div class="more" id="o-remind">
+          <div id="rtimes"></div><button class="btn small" id="radd">Add a time</button>
+          <label class="f">Days</label><div class="chips" id="rdays" role="group" aria-label="Reminder days"></div>
+          <label class="f" for="rmsg">Message (optional)</label><input type="text" id="rmsg" maxlength="80" class="w100" placeholder="e.g. Take a breath before the next meeting">
+        </div></div>
+        <input type="checkbox" class="switch" id="a-remind" role="switch" aria-label="Daily sit reminder"></div>
+      <div class="opt"><div class="txt"><h3>Streak saver</h3><p>One evening nudge if you have a streak going and have not sat yet.</p>
+        <div class="more" id="o-saver"><label class="f" for="savt" style="margin-top:0">Send at</label><input type="time" id="savt"></div></div>
+        <input type="checkbox" class="switch" id="a-saver" role="switch" aria-label="Streak saver"></div>
+      <div class="opt"><div class="txt"><h3>Session bells</h3><p>A notification at each phase change and at the end, when your screen is off or the app is in the background.</p></div>
+        <input type="checkbox" class="switch" id="a-bells" role="switch" aria-label="Session bells"></div>
+      <div class="opt"><div class="txt"><h3>High-stress nudge</h3><p>Suggests a short sit when you rate your stress high before a session.</p>
+        <div class="more" id="o-stress"><label class="f" for="sth" style="margin-top:0">Alert at stress rating</label><select id="sth"><option value="6">6 or higher</option><option value="7">7 or higher</option><option value="8">8 or higher</option><option value="9">9 or higher</option></select></div></div>
+        <input type="checkbox" class="switch" id="a-stress" role="switch" aria-label="High-stress nudge"></div>
+      <div class="opt"><div class="txt"><h3>Daily goal reached</h3><p>A short note when today's minutes reach your goal.</p></div>
+        <input type="checkbox" class="switch" id="a-goal" role="switch" aria-label="Daily goal reached"></div>
+      <div class="opt"><div class="txt"><h3>Weekly summary</h3><p>Your days, minutes and streak for the week.</p>
+        <div class="more row" id="o-weekly"><select id="wkd" aria-label="Summary day"></select><input type="time" id="wkt" aria-label="Summary time"></div></div>
+        <input type="checkbox" class="switch" id="a-weekly" role="switch" aria-label="Weekly summary"></div>
+    </div>
+
+    <div class="card">
+      <h2>How alerts arrive</h2>
+      <label class="f">Style</label>
+      <div class="seg" id="astyle" role="group" aria-label="Alert style"><button data-s="sound">Sound</button><button data-s="vibrate">Vibrate</button><button data-s="silent">Silent</button></div>
+      <label class="f">Snooze for</label>
+      <div class="chips" id="asnz" role="group" aria-label="Snooze length"></div>
+      <div class="opt" style="margin-top:14px"><div class="txt"><h3>Quiet hours</h3><p>No reminders in this window. Session bells still ring.</p>
+        <div class="more row" id="o-quiet"><input type="time" id="qf" aria-label="Quiet from"><span class="note">to</span><input type="time" id="qt" aria-label="Quiet until"></div></div>
+        <input type="checkbox" class="switch" id="a-quiet" role="switch" aria-label="Quiet hours"></div>
+    </div>
+
+    <div class="card">
+      <h2>When the app is closed</h2>
+      <p class="note" style="margin:6px 0 10px">Browsers deliver reminders reliably only while the app is open. On Android with the app installed, the widget and one reminder a day can still refresh in the background. For a reminder that always arrives, add a repeating calendar event:</p>
+      <a id="cal" target="_blank" rel="noopener">Add to Google Calendar</a>
+    </div>
+  </section>
+
+  <!-- ===== MORE ===== -->
+  <section id="tab-more" class="tabpanel" hidden aria-labelledby="ph-m">
+    <h1 id="ph-m" style="margin:10px 0 16px">More</h1>
+    <div class="card"><h2>Daily goal</h2><label class="f" for="goal">Minutes per day <span id="gv"></span></label><input type="range" id="goal" min="5" max="120" step="5"></div>
+    <div class="card"><h2>Appearance and sound</h2><label class="f">Theme</label><div class="seg" id="themes" role="group" aria-label="Theme"></div>
+      <div class="opt" style="margin-top:14px"><div class="txt"><h3>Mute the bell</h3><p>Silences the in-app bell at the start, at phase changes and at the end.</p></div><input type="checkbox" class="switch" id="mute" role="switch" aria-label="Mute the bell"></div></div>
+    <div class="card"><h2>Open on your phone</h2><p class="note" style="margin:4px 0 12px">Scan this code with your phone camera.</p><div id="qr" class="qrbox"></div><label class="f" for="qurl">Link</label><input type="text" id="qurl" class="w100"><div class="row" style="margin-top:10px"><button class="btn" id="qsave">Save QR image</button><button class="btn primary" id="inst" hidden>Install app</button></div></div>
+    <div class="card"><h2>The three phases</h2>
+      <p style="margin-top:10px"><b style="color:var(--ana)">Anapana.</b> Rest your attention on the feeling of breath at the nostrils. It steadies the mind.</p>
+      <p style="margin-top:8px"><b style="color:var(--vip)">Vipassana.</b> Move attention through sensations across the body and accept each one without reacting.</p>
+      <p style="margin-top:8px"><b style="color:var(--met)">Metta.</b> Close with goodwill and compassion toward all beings.</p>
+      <p class="note" style="margin-top:10px">The default 10, 15 and 5 minute split follows the method of S. N. Goenka, as used in the study.</p></div>
+    <div class="card"><h2>What the research found</h2><p style="margin-top:10px">Delgado-Pastor and colleagues (2013) tested ten experienced Vipassana meditators on two days: one with a 30-minute meditation and one with 30 minutes of random thinking. After meditating, the meditators showed a larger P3b brain response to a target tone, which the authors read as greater attentional engagement. During the Vipassana phase, their LF/HF heart rate ratio also rose more than during random thinking.</p><p class="note" style="margin-top:10px">The authors call this suggestive evidence. The group was small, there was no non-meditator comparison, and the heart result was only marginally significant. This app records your own ratings and cannot measure your brain or heart, and it is not a medical tool. If stress or alcohol use feels hard to manage alone, a doctor or counsellor can support you alongside meditation.</p></div>
+  </section>
+</div>
+
+<nav class="tabs" aria-label="Sections"><div role="tablist" id="tabs">
+  <button role="tab" data-t="today" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Today</button>
+  <button role="tab" data-t="prog" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 19h16M7 16v-5M12 16V7M17 16v-8"/></svg>Progress</button>
+  <button role="tab" data-t="widget" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="3"/><rect x="9" y="7" width="6" height="4" rx="1"/></svg>Widget</button>
+  <button role="tab" data-t="alerts" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg>Alerts</button>
+  <button role="tab" data-t="more" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg>More</button>
+</div></nav>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+function ld(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}}
+function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function merge(def,saved){const o={};for(const k in def){const d=def[k],s=saved&&saved[k];o[k]=(d&&typeof d==='object'&&!Array.isArray(d))?Object.assign({},d,s||{}):(s===undefined?d:s)}return o}
+
+/* ---------- state (carries over data from the previous version) ---------- */
+const RANGE={a:[1,60],v:[1,90],m:[0,30]};
+const oldRem=ld('vp2_rem',{});
+let cfg=Object.assign({a:10,v:15,m:5,prog:'full',goal:30,mute:false,theme:'auto'},ld('vp2_cfg',{}),ld('vp3_cfg',{}));
+delete cfg.rest;
+for(const k in RANGE){const n=Math.round(+cfg[k]);cfg[k]=Number.isFinite(n)?Math.min(RANGE[k][1],Math.max(RANGE[k][0],n)):{a:10,v:15,m:5}[k]}
+let hist=ld('vp2_hist',ld('vp_hist',[]));
+const AD={pinned:false,acts:['short','full'],
+  remind:{on:!!oldRem.on,times:oldRem.times||['07:00'],days:oldRem.days||[0,1,2,3,4,5,6],msg:oldRem.msg||''},
+  saver:{on:true,time:'20:30'},bells:{on:true},stress:{on:true,th:7},goal:{on:true},weekly:{on:false,day:0,time:'19:00'},
+  quiet:{on:false,from:'22:00',to:'06:30'},style:'sound',snooze:10,fired:{},snoozeAt:0};
+let A=merge(AD,ld('vp3_alerts',{}));
+function save(){sv('vp3_cfg',cfg);sv('vp3_alerts',A);snapshot()}
+
+const PR={full:['Full',[10,15,5]],short:['Short',[5,8,2]],deep:['Deep',[10,30,5]],custom:['Custom',null]};
+const P=[{n:'Anapana',c:'--ana',g:'Feel the air entering and leaving at your nostrils. When the mind wanders, gently come back.'},
+ {n:'Vipassana',c:'--vip',g:'Move attention slowly through the body. Observe each sensation without reacting or judging.'},
+ {n:'Metta',c:'--met',g:'Let feelings of goodwill and compassion spread to all living beings.'}];
+const MSG=['A few quiet minutes can change the tone of the whole day.','Sit down, breathe, and observe. Nothing else is required.','Your cushion is waiting. Even a short sit counts.','Pause the busyness. Return to the breath.'];
+const DN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const pad=x=>(x<10?'0':'')+x;
+const dk=d=>{d=d||new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()};
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const toMin=t=>{const p=String(t).split(':');return (+p[0])*60+(+p[1]||0)};
+function toast(t){const e=document.createElement('div');e.className='toast';e.textContent=t;e.setAttribute('role','status');document.body.appendChild(e);setTimeout(()=>e.remove(),2600)}
+function fmt(ms){let s=Math.ceil(ms/1000),m=Math.floor(s/60);s%=60;return pad(m)+':'+pad(s)}
+
+/* ---------- lamp drawing (used on Today and in every widget) ---------- */
+function lamp(level,dark){
+  const h=6+20*Math.max(0,Math.min(1,level)),b=37,t=b-h,on=level>0.02;
+  const fl=(s)=>{const hh=h*s,tt=b-hh;return `M32 ${tt}C34 ${tt+hh*.35} 39 ${b-hh*.42} 39 ${b-hh*.2}C39 ${b-hh*.05} 36 ${b} 32 ${b}C28 ${b} 25 ${b-hh*.05} 25 ${b-hh*.2}C25 ${b-hh*.42} 30 ${tt+hh*.35} 32 ${tt}Z`};
+  return `<svg viewBox="0 0 64 64" width="100%" height="100%">`+
+   (on?`<g class="fl"><path d="${fl(1)}" fill="var(--flame)"/><path d="${fl(.55)}" fill="var(--flame-in)"/></g>`:`<path d="M32 36v-5" stroke="${dark?'#7d8b87':'var(--mute)'}" stroke-width="2" stroke-linecap="round"/>`)+
+   `<path d="M8 38h48c-2 9.5-11.5 15.5-24 15.5S10 47.5 8 38z" fill="var(--diya)"/><path d="M50 38c3-1.2 6-3.6 8-6.5" stroke="var(--diya)" stroke-width="3.2" stroke-linecap="round" fill="none"/><rect x="25" y="54" width="14" height="4" rx="2" fill="var(--diya)"/></svg>`}
+
+/* ---------- theme and sound ---------- */
+function theme(){const r=document.documentElement;cfg.theme==='auto'?r.removeAttribute('data-theme'):r.setAttribute('data-theme',cfg.theme)}
+let ac=null;
+function bell(n){if(cfg.mute)return;try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();if(ac.state==='suspended')ac.resume();for(let i=0;i<n;i++){const o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime+i*1.6;o.type='sine';o.frequency.value=528;o.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.4,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+1.5);o.start(t);o.stop(t+1.6)}}catch(e){}}
+
+/* ---------- timer ---------- */
+let stt='idle',el=0,t0=0,tm=null,idx=-1,plan=null,wl=null;
+const mins=()=>cfg.prog==='custom'?[cfg.a,cfg.v,cfg.m]:PR[cfg.prog][1];
+const lens=()=>(plan||mins()).map(x=>x*60000);   // plan is fixed at Start, so edits never change a running sit
+const tot=()=>lens().reduce((a,b)=>a+b,0);
+function segs(){const L=lens(),T=tot(),M=plan||mins();
+  $('#segs').innerHTML=L.map((l,i)=>`<i style="flex:${l/T};${l?'':'display:none'}"><b style="background:var(${P[i].c})"></b></i>`).join('');
+  $('#seglab').innerHTML=L.map((l,i)=>`<span style="flex:${l/T};${l?'':'display:none'}">${P[i].n} ${M[i]}</span>`).join('')}
+function phaseAt(e){const L=lens();let acc=0,k=0;for(let i=0;i<3;i++){if(L[i]>0&&e>=acc)k=i;acc+=L[i]}return k}
+function draw(){const L=lens(),T=tot(),e=Math.min(el,T),b=$('#segs').children;let acc=0;
+  for(let i=0;i<3;i++){b[i].firstChild.style.width=(L[i]?Math.max(0,Math.min(1,(e-acc)/L[i])):0)*100+'%';acc+=L[i]}
+  $('#time').textContent=fmt(T-e);$('#arc').style.strokeDashoffset=282.7*(1-e/T);
+  if(stt==='run'||stt==='pause'){const k=phaseAt(e);$('#ph').textContent=P[k].n+(stt==='pause'?' (paused)':'');$('#guide').textContent=P[k].g;$('#arc').style.stroke='var('+P[k].c+')';
+    if(k!==idx&&stt==='run'){if(idx>=0){bell(1);if(A.bells.on&&document.hidden)notify(P[k].n+' begins',P[k].g,{tag:'vp-session',force:true})}idx=k}}}
+function tick(){el=Date.now()-t0;if(el>=tot()){el=tot();finish(true)}else draw()}
+function lock(on){try{if(on&&navigator.wakeLock){navigator.wakeLock.request('screen').then(l=>{wl=l}).catch(()=>{})}else if(wl){wl.release();wl=null}}catch(e){}}
+function start(){if(stt==='idle'||stt==='done'){el=0;plan=mins().slice();$('#post').hidden=true;segs()}
+  bell(1);t0=Date.now()-el;stt='run';idx=-1;clearInterval(tm);tm=setInterval(tick,250);lock(true);ui();tick()}
+function pause(){clearInterval(tm);stt='pause';lock(false);ui();draw()}
+function finish(full){clearInterval(tm);lock(false);stt='done';if(full){bell(3);if(A.bells.on&&document.hidden)notify('Session complete','Take a moment before you open your eyes, then note how you feel.',{tag:'vp-session',force:true})}
+  ui();$('#ph').textContent=full?'Session complete':'Session ended';$('#guide').textContent='Take a moment before you open your eyes, then note how you feel.';
+  $('#post').hidden=false;$('#s2').value=$('#s1').value;$('#s2v').textContent=$('#s2').value;$('#post').scrollIntoView({behavior:'smooth',block:'nearest'})}
+function reset(){clearInterval(tm);stt='idle';el=0;idx=-1;plan=null;lock(false);$('#post').hidden=true;ui();$('#ph').textContent='Ready';
+  $('#guide').textContent='Sit comfortably, close your eyes, and press Start. A bell marks each change of phase.';$('#arc').style.stroke='var(--ana)';segs();draw()}
+function ui(){const live=stt==='run'||stt==='pause';
+  $('#go').textContent=stt==='run'?'Pause':stt==='pause'?'Resume':'Start';
+  $('#end').hidden=!live;$('#reset').hidden=stt==='idle'||stt==='run';$('#pre').hidden=live;
+  $('#progs').hidden=stt!=='idle';$('#cust').hidden=!(stt==='idle'&&cfg.prog==='custom')}
+$('#go').onclick=()=>stt==='run'?pause():start();$('#end').onclick=()=>finish(false);$('#reset').onclick=reset;
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&e.target===document.body&&!$('#tab-today').hidden){e.preventDefault();stt==='run'?pause():start()}});
+$('#s1').oninput=function(){$('#s1v').textContent=this.value};
+$('#s1').onchange=function(){if(A.stress.on&&+this.value>=A.stress.th)fire('stress',{v:+this.value})};
+$('#s2').oninput=function(){$('#s2v').textContent=this.value};$('#sc').oninput=function(){$('#scv').textContent=this.value};
+$('#svb').onclick=()=>{const before=dayMins()[dk()]||0,m=Math.max(1,Math.round(el/60000));
+  hist.unshift({d:new Date().toISOString(),min:m,pre:+$('#s1').value,post:+$('#s2').value,sc:+$('#sc').value,nt:$('#nt').value.trim(),prog:cfg.prog});
+  sv('vp2_hist',hist);$('#nt').value='';reset();render();toast('Session saved');
+  if(A.goal.on&&before<cfg.goal&&before+m>=cfg.goal)fire('goal',{min:before+m})};
+$('#ds').onclick=reset;
+$('#clr').onclick=()=>{if(confirm('Delete all saved sessions on this device?')){hist=[];sv('vp2_hist',hist);render()}};
+
+/* ---------- programs and the custom editor ---------- */
+function chips(){$('#progs').innerHTML=Object.keys(PR).map(k=>{const m=k==='custom'?[cfg.a,cfg.v,cfg.m]:PR[k][1];return `<button aria-pressed="${cfg.prog===k}" data-p="${k}">${PR[k][0]} ${m[0]+m[1]+m[2]}</button>`}).join('');
+  $$('#progs button').forEach(b=>b.onclick=()=>{cfg.prog=b.dataset.p;save();chips();ui();if(stt==='idle'){segs();draw()}});custUI()}
+function custUI(){for(const k in RANGE){const i=$('#c'+k);if(document.activeElement!==i)i.value=cfg[k];i.removeAttribute('aria-invalid')}
+  $$('#cust .crow').forEach(r=>{const k=r.dataset.k,[lo,hi]=RANGE[k],b=r.querySelectorAll('.ib');b[0].disabled=cfg[k]<=lo;b[1].disabled=cfg[k]>=hi});
+  const m=$('#cmsg');m.classList.remove('err');m.textContent='Total '+(cfg.a+cfg.v+cfg.m)+' min. Saved automatically.'}
+function setPhase(k,n){const[lo,hi]=RANGE[k];n=Math.min(hi,Math.max(lo,Math.round(n)));cfg[k]=n;cfg.prog='custom';save();
+  $$('#progs button').forEach(b=>{if(b.dataset.p==='custom')b.textContent='Custom '+(cfg.a+cfg.v+cfg.m)});
+  if(stt==='idle'){segs();draw()}custUI()}
+function custErr(k,txt){const i=$('#c'+k),m=$('#cmsg');i.setAttribute('aria-invalid','true');m.classList.add('err');m.textContent=txt}
+$$('#cust .crow').forEach(r=>{const k=r.dataset.k,i=r.querySelector('input'),[lo,hi]=RANGE[k],name=P['avm'.indexOf(k)].n;
+  r.querySelectorAll('.ib').forEach(b=>b.onclick=()=>setPhase(k,cfg[k]+(+b.dataset.d)));
+  i.addEventListener('input',()=>{const v=i.value.trim();if(v===''){custErr(k,'Enter '+name+' minutes, '+lo+' to '+hi+'.');return}
+    const n=Number(v);if(!Number.isFinite(n)||n<lo||n>hi){custErr(k,name+' can be '+lo+' to '+hi+' minutes.');return}setPhase(k,n)});
+  i.addEventListener('change',()=>{const n=Number(i.value);if(i.value.trim()===''||!Number.isFinite(n)){i.value=cfg[k];custUI();return}setPhase(k,n);i.value=cfg[k]});
+  i.addEventListener('blur',()=>{i.value=cfg[k];custUI()})});
+
+/* ---------- stats ---------- */
+function dayMins(){const o={};hist.forEach(h=>{const k=dk(new Date(h.d));o[k]=(o[k]||0)+h.min});return o}
+function streaks(o){let cur=0;const c=new Date();if(!o[dk(c)])c.setDate(c.getDate()-1);while(o[dk(c)]){cur++;c.setDate(c.getDate()-1)}
+  const ds=Object.keys(o).map(k=>{const p=k.split('-');return new Date(+p[0],p[1]-1,+p[2]).getTime()}).sort((a,b)=>a-b);let best=0,run=0,prev=0;
+  ds.forEach(t=>{run=(prev&&Math.round((t-prev)/864e5)===1)?run+1:1;if(run>best)best=run;prev=t});return [cur,best]}
+function level(m){const g=cfg.goal;return !m?0:m>=g*1.5?4:m>=g?3:m>=g/2?2:1}
+
+/* ---------- expandable calendar ---------- */
+const C={open:false,view:'month',cur:new Date(),sel:null};
+const MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const sod=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x};
+const monday=d=>{const x=sod(d);x.setDate(x.getDate()-((x.getDay()+6)%7));return x};
+function weekStrip(o){let w='';for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const m=o[dk(d)]||0;
+  w+=`<div class="${i===0?'td':''}"><span class="lv${level(m)}" title="${m} min">${d.getDate()}</span>${DN[d.getDay()]}</div>`}$('#wk').innerHTML=w}
+function range(){const c=C.cur;if(C.view==='week'){const s=monday(c),e=new Date(s);e.setDate(s.getDate()+6);return[s,e]}
+  if(C.view==='month')return[new Date(c.getFullYear(),c.getMonth(),1),new Date(c.getFullYear(),c.getMonth()+1,0)];
+  return[new Date(c.getFullYear(),0,1),new Date(c.getFullYear(),11,31)]}
+function summary(o,s,e){const today=sod(new Date());let days=0,min=0,goal=0,run=0,best=0;
+  for(const d=new Date(s);d<=e&&d<=today;d.setDate(d.getDate()+1)){const m=o[dk(d)]||0;if(m){days++;min+=m;run++;best=Math.max(best,run)}else run=0;if(m>=cfg.goal)goal++}
+  return{days,min,goal,best}}
+function renderCal(){
+  $('#calwrap').classList.toggle('open',C.open);$('#calx').setAttribute('aria-expanded',C.open);$('#calx').textContent=C.open?'Show less':'Expand calendar';
+  $('#calh').textContent=C.open?'Practice calendar':'Last 7 days';$('#wk').hidden=C.open;$('#calwrap').inert=!C.open;
+  $$('#calwrap .seg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===C.view));
+  if(!C.open)return;
+  const o=dayMins(),[s,e]=range(),today=sod(new Date()),v=C.view;
+  $('#clab').textContent=v==='week'?s.toLocaleDateString(undefined,{day:'numeric',month:'short'})+' to '+e.toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'}):v==='month'?MN[s.getMonth()]+' '+s.getFullYear():String(s.getFullYear());
+  $('#cnext').disabled=new Date(e.getTime()+864e5)>today;
+  let h='';
+  if(v==='month'){const off=(s.getDay()+6)%7;h='<div class="dow"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div><div class="month">';
+    for(let i=0;i<off;i++)h+='<button class="pad" tabindex="-1" aria-hidden="true"></button>';
+    for(const d=new Date(s);d<=e;d.setDate(d.getDate()+1)){const k=dk(d),m=o[k]||0,fut=d>today,td=+d===+today;
+      h+=`<button data-k="${k}" class="${fut?'fut':'lv'+level(m)}${td?' td':''}" aria-pressed="${C.sel===k}" ${fut?'disabled':''} aria-label="${d.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'})}: ${m} minutes">${d.getDate()}</button>`}
+    h+='</div>'}
+  else if(v==='week'){const W=320,H=150,bw=28,days=[];let mx=cfg.goal;
+    for(let i=0;i<7;i++){const d=new Date(s);d.setDate(s.getDate()+i);const m=o[dk(d)]||0;days.push([d,m]);mx=Math.max(mx,m)}
+    const y=m=>H-24-(m/mx)*(H-44),gy=y(cfg.goal);
+    h=`<div class="weekbars"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Minutes per day for this week">`+
+      `<line x1="0" x2="${W}" y1="${gy}" y2="${gy}" stroke="var(--vip)" stroke-dasharray="4 4"/><text x="${W}" y="${gy-5}" text-anchor="end">goal ${cfg.goal}</text>`+
+      days.map(([d,m],i)=>{const x=12+i*((W-24-bw)/6),yy=y(m),fut=d>today,k=dk(d);return `<g data-k="${k}" style="cursor:${fut?'default':'pointer'}"><rect x="${x}" y="${m?yy:H-26}" width="${bw}" height="${m?H-24-yy:2}" rx="5" fill="${m?(m>=cfg.goal?'var(--h4)':'var(--h2)'):'var(--line-2)'}"/>${m?`<text x="${x+bw/2}" y="${yy-5}" text-anchor="middle">${m}</text>`:''}<text x="${x+bw/2}" y="${H-6}" text-anchor="middle" style="${+d===+today?'fill:var(--ink);font-weight:700':''}">${DN[d.getDay()]}</text></g>`}).join('')+'</svg></div>'}
+  else{h='<div class="year">';for(let mI=0;mI<12;mI++){const ms=new Date(s.getFullYear(),mI,1),me=new Date(s.getFullYear(),mI+1,0),off=(ms.getDay()+6)%7,sm=summary(o,ms,me);
+      h+=`<button class="mini" data-m="${mI}" aria-label="${MN[mI]}: ${sm.days} days practised"><b>${MN[mI].slice(0,3)}</b><span class="g">`+'<i class="pad"></i>'.repeat(off);
+      for(const d=new Date(ms);d<=me;d.setDate(d.getDate()+1)){const m=o[dk(d)]||0;h+=`<i class="${d>today?'fut':'lv'+level(m)}"></i>`}
+      h+=`</span><small>${ms>today?'&nbsp;':sm.days+' days'}</small></button>`}h+='</div>'}
+  $('#cview').innerHTML=h;
+  $('#clegend').innerHTML='<span>Less</span><i style="background:var(--h0)"></i><i style="background:var(--h1)"></i><i style="background:var(--h2)"></i><i style="background:var(--h3)"></i><i style="background:var(--h4)"></i><span>More</span><span style="margin-left:auto;display:inline-flex;gap:6px;align-items:center">Goal of '+cfg.goal+' min met <i style="background:var(--h3)"></i><i style="background:var(--h4)"></i></span>';
+  const sm=summary(o,s,e);
+  $('#csum').innerHTML=`<div><b>${sm.days}</b><small>days sat</small></div><div><b>${sm.min}</b><small>minutes</small></div><div><b>${sm.goal}</b><small>goal days</small></div>`;
+  $$('#cview [data-k]').forEach(b=>b.addEventListener('click',()=>{const p=b.dataset.k.split('-');if(new Date(+p[0],p[1]-1,+p[2])>today)return;C.sel=C.sel===b.dataset.k?null:b.dataset.k;renderCal()}));
+  $$('#cview [data-m]').forEach(b=>b.onclick=()=>{C.cur=new Date(s.getFullYear(),+b.dataset.m,1);C.view='month';C.sel=null;renderCal()});
+  dayDetail()}
+function dayDetail(){const box=$('#cday');if(!C.sel||C.view==='year'){box.innerHTML='';return}
+  const p=C.sel.split('-'),d=new Date(+p[0],p[1]-1,+p[2]),list=hist.filter(h=>dk(new Date(h.d))===C.sel);
+  box.innerHTML=`<h3>${d.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'})}</h3>`+(list.length?list.map(h=>{const t=new Date(h.d);return `<div class="h"><div>${t.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}<br><em>${h.min} min${h.nt?', '+esc(h.nt):''}</em></div><div>Stress ${h.pre} to ${h.post}<br><em>focus ${h.sc}/100</em></div></div>`}).join(''):'<p class="note" style="margin-top:4px">No sit recorded on this day.</p>')}
+$('#calx').onclick=()=>{C.open=!C.open;if(C.open){C.cur=new Date();C.sel=null}renderCal()};
+$$('#calwrap .seg button').forEach(b=>b.onclick=()=>{C.view=b.dataset.v;C.sel=null;renderCal()});
+function shift(n){const c=C.cur;C.cur=C.view==='week'?new Date(c.getFullYear(),c.getMonth(),c.getDate()+7*n):C.view==='month'?new Date(c.getFullYear(),c.getMonth()+n,1):new Date(c.getFullYear()+n,0,1);C.sel=null;renderCal()}
+$('#cprev').onclick=()=>shift(-1);$('#cnext').onclick=()=>shift(1);
+function openCal(){go('today');C.open=true;C.view='month';C.cur=new Date();renderCal();setTimeout(()=>$('#calcard').scrollIntoView({behavior:'smooth',block:'start'}),60)}
+$('#opencal').onclick=openCal;
+
+/* ---------- progress ---------- */
+function chart(){const d=hist.slice(0,10).reverse();if(d.length<2){$('#chart').innerHTML='<p class="note">Save at least two sessions to see your trend.</p>';$('#ins').textContent='';return}
+  const W=320,H=140,x=i=>28+i*(W-40)/(d.length-1),y=v=>10+(10-v)*(H-30)/10;let g='';
+  [0,5,10].forEach(v=>{g+=`<line x1="28" x2="${W-12}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="4" y="${y(v)+4}">${v}</text>`});
+  const line=(k,c)=>`<polyline fill="none" stroke="var(${c})" stroke-width="2.5" points="${d.map((h,i)=>x(i)+','+y(h[k])).join(' ')}"/>`+d.map((h,i)=>`<circle cx="${x(i)}" cy="${y(h[k])}" r="3.5" fill="var(${c})"/>`).join('');
+  $('#chart').innerHTML=`<svg viewBox="0 0 ${W} ${H+14}" width="100%" role="img" aria-label="Stress before and after your last ${d.length} sessions">${g}${line('pre','--vip')}${line('post','--ana')}<text x="28" y="${H+10}">Older</text><text x="${W-44}" y="${H+10}">Recent</text></svg><p class="note"><b style="color:var(--vip)">Amber:</b> before each session. <b style="color:var(--ana)">Green:</b> after.</p>`;
+  const avg=hist.reduce((a,h)=>a+(h.pre-h.post),0)/hist.length;
+  $('#ins').textContent=`Across ${hist.length} sessions your stress rating changed by ${avg>0?'-':'+'}${Math.abs(avg).toFixed(1)} points on average. These are your own self-ratings, so treat them as a personal trend, not a measurement.`}
+
+function render(){const n=new Date(),hr=n.getHours();
+  $('#hi').textContent=hr<12?'Good morning':hr<18?'Good afternoon':'Good evening';
+  $('#dt').textContent=n.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});
+  const o=dayMins(),td=o[dk()]||0;$('#gt').textContent=td+' of '+cfg.goal+' min';$('#gb').style.width=Math.min(100,td/cfg.goal*100)+'%';
+  weekStrip(o);const s=streaks(o);
+  $('#n').textContent=hist.length;$('#mn').textContent=hist.reduce((a,h)=>a+h.min,0);$('#st').textContent=s[0];$('#bs').textContent=s[1];
+  $('#clr').hidden=!hist.length;chart();
+  $('#hist').innerHTML=hist.length?hist.slice(0,8).map(h=>{const dt=new Date(h.d),dl=h.post-h.pre;return `<div class="h"><div>${dt.toLocaleDateString(undefined,{day:'numeric',month:'short'})} at ${dt.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}<br><em>${h.min} min, focus ${h.sc}/100${h.nt?', '+esc(h.nt):''}</em></div><div>Stress ${h.pre} to ${h.post}<br><em>${dl<0?'down '+(-dl):dl>0?'up '+dl:'no change'}</em></div></div>`}).join(''):'<p class="note">No sessions yet. Your first one will appear here.</p>';
+  renderCal();widget()}
+
+/* ---------- widget ---------- */
+function snap(){const o=dayMins(),keys=Object.keys(o).sort((a,b)=>{const f=k=>{const p=k.split('-');return new Date(+p[0],p[1]-1,+p[2]).getTime()};return f(b)-f(a)}),last=keys[0]||null;
+  return{v:1,goal:cfg.goal,streak:streaks(o)[0],last,lastMin:last?o[last]:0,pinned:A.pinned,acts:A.acts,
+    alerts:{remind:A.remind,saver:A.saver,quiet:A.quiet,style:A.style},fired:A.fired}}
+// The service worker repeats this logic so the pinned card stays honest while the app is closed.
+function wState(sn,now){const today=dk(now),y=new Date(now);y.setDate(y.getDate()-1);
+  const done=sn.last===today,alive=done||sn.last===dk(y),streak=alive?sn.streak:0,min=done?sn.lastMin:0,h=now.getHours()+now.getMinutes()/60,left=Math.max(0,24-h);
+  if(done&&min>=sn.goal)return{title:'Lamp lit for today',body:min+' min sat · '+streak+'-day streak',flame:1,streak,min,goal:sn.goal};
+  if(done)return{title:'Keep the lamp lit',body:min+' of '+sn.goal+' min today · '+streak+'-day streak',flame:.85,streak,min,goal:sn.goal};
+  if(streak>0)return{title:h>=18?'Your streak needs a sit':'Your cushion is waiting',body:h>=18?Math.ceil(left)+' h left to keep your '+streak+'-day streak':streak+'-day streak · sit today to keep it going',flame:Math.max(.18,left/24),streak,min,goal:sn.goal};
+  return{title:'Light the lamp',body:'One sit today starts a new streak',flame:0,streak,min,goal:sn.goal}}
+const ACT={short:'Sit 15 min',full:'Full 30',deep:'Deep 45',custom:'Custom'};
+let lastPin='';
+function widget(force){const now=new Date(),w=wState(snap(),now);
+  $('#hlamp').innerHTML=lamp(w.flame);$('#hstat').textContent=w.body;
+  ['#wl1','#wl2','#wl3'].forEach(s=>$(s).innerHTML=lamp(w.flame,true));$('#wl4').innerHTML=lamp(w.flame);
+  $('#wstreak').textContent=w.streak;$('#hwn').textContent=w.streak;$('#wring').style.strokeDashoffset=289*(1-Math.min(1,w.min/w.goal));
+  $('#wtitle').textContent=w.title;$('#wbody').textContent=w.body;$('#wbar').style.width=Math.min(100,w.min/w.goal*100)+'%';
+  $('#ntitle').textContent=w.title;$('#nbody').textContent=w.body;$('#nacts').innerHTML=A.acts.map(a=>'<span>'+ACT[a]+'</span>').join('');
+  $('#ldate').textContent=now.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'});$('#ltime').textContent=pad(now.getHours())+':'+pad(now.getMinutes());
+  $('#wacts').innerHTML=Object.keys(ACT).map(k=>`<button aria-pressed="${A.acts.includes(k)}" data-a="${k}">${k==='custom'?'Custom '+(cfg.a+cfg.v+cfg.m):ACT[k]}</button>`).join('');
+  $$('#wacts button').forEach(b=>b.onclick=()=>{const k=b.dataset.a;if(A.acts.includes(k)){if(A.acts.length>1)A.acts=A.acts.filter(x=>x!==k)}else{A.acts=[A.acts[A.acts.length-1],k].filter(Boolean).slice(-2)}save();widget(true)});
+  $('#wpin').checked=A.pinned;wStatus();
+  const sig=w.title+w.body+A.acts.join();
+  if(A.pinned&&perm()==='granted'&&(force||sig!==lastPin)){lastPin=sig;
+    notify(w.title,w.body,{tag:'vp-widget',sticky:true,silent:true,force:true,actions:A.acts.map(a=>({action:a,title:ACT[a]}))})}}
+let bgSync='unknown';
+function wStatus(){const s=$('#wstat'),p=perm();let cls='',t;
+  if(!A.pinned)t='Off. The previews above show what it will look like.';
+  else if(p!=='granted'){cls='bad';t='Needs notification permission. Tap Allow notifications on the Alerts tab.'}
+  else{cls='ok';t='Pinned. '+(bgSync==='ok'?'Refreshes in the background a few times a day.':'Updates whenever you open the app.')}
+  s.className='status '+cls;s.querySelector('span').textContent=t}
+$('#wpin').onchange=async function(){A.pinned=this.checked;save();
+  if(A.pinned){if(perm()==='default')await askPerm();bgSync=await regSync();widget(true)}
+  else{lastPin='';try{const r=await navigator.serviceWorker.getRegistration();(await r.getNotifications({tag:'vp-widget'})).forEach(n=>n.close())}catch(e){}wStatus()}};
+async function regSync(){try{const r=await navigator.serviceWorker.ready;if(!('periodicSync' in r))return'unsupported';
+  const q=await navigator.permissions.query({name:'periodic-background-sync'});if(q.state!=='granted')return'denied';
+  await r.periodicSync.register('vp-refresh',{minInterval:3*3600e3});return'ok'}catch(e){return'unsupported'}}
+async function snapshot(){try{const c=await caches.open('mb-state');await c.put(new URL('state.json',location.href).href,new Response(JSON.stringify(snap()),{headers:{'Content-Type':'application/json'}}))}catch(e){}}
+
+/* ---------- notifications ---------- */
+let swr=null;
+const perm=()=>('Notification' in window)?Notification.permission:'unsupported';
+async function askPerm(){if(!('Notification' in window)){toast('Notifications are not supported here');return}try{await Notification.requestPermission()}catch(e){}nstat();wStatus();if(A.pinned)widget(true)}
+function inQuiet(){if(!A.quiet.on)return false;const n=new Date(),m=n.getHours()*60+n.getMinutes(),f=toMin(A.quiet.from),t=toMin(A.quiet.to);return f<=t?(m>=f&&m<t):(m>=f||m<t)}
+async function notify(title,body,o){o=o||{};if(perm()!=='granted')return false;if(!o.force&&inQuiet())return false;
+  const opt={body,tag:o.tag||'vp',icon:'icon-192.png',badge:'icon-192.png',data:{url:o.url||'./'}};
+  if(o.silent||A.style==='silent')opt.silent=true;else if(A.style==='vibrate')opt.vibrate=[200,100,200];
+  if(o.sticky)opt.requireInteraction=true;if(o.renotify)opt.renotify=true;if(o.actions)opt.actions=o.actions;
+  try{const r=swr||(navigator.serviceWorker&&await navigator.serviceWorker.getRegistration());if(r&&r.showNotification){await r.showNotification(title,opt);return true}
+    delete opt.actions;new Notification(title,opt);return true}catch(e){return false}}
+function nstat(){const p=perm(),s=$('#nst');let cls='',t;
+  if(p==='granted'){cls='ok';t='Notifications are allowed on this device.'}
+  else if(p==='denied'){cls='bad';t='Notifications are blocked in your browser settings. You will still see alerts inside the app.'}
+  else if(p==='unsupported'){cls='bad';t='This browser cannot show notifications. On iPhone, add the app to your home screen first.'}
+  else t='Notifications are not allowed yet.';
+  s.className='status '+cls;s.querySelector('span').textContent=t;$('#nperm').hidden=p!=='default'}
+$('#nperm').onclick=askPerm;
+
+let bannerKind=null;
+function fire(kind,x){x=x||{};const o=dayMins(),s=streaks(o)[0];let t,m,goTxt=null,act=null,snooze=false;
+  if(kind==='remind'){t='Time to sit'+(x.label?' ('+x.label+')':'');m=A.remind.msg||MSG[new Date().getDate()%MSG.length];goTxt='Sit now';act=cfg.prog;snooze=true}
+  else if(kind==='saver'){t='Keep your '+s+'-day streak';m='It ends at midnight. A short sit keeps the lamp lit.';goTxt='Sit 15 min';act='short';snooze=true}
+  else if(kind==='stress'){t='Stress looks high';m='You rated your stress '+x.v+' out of 10. A short sit may help.';goTxt='Start a short sit';act='short'}
+  else if(kind==='goal'){t='Daily goal reached';m=x.min+' of '+cfg.goal+' minutes today.'}
+  else if(kind==='weekly'){const e=new Date(),st=new Date();st.setDate(e.getDate()-6);const sm=summary(o,sod(st),e);t='Your week of practice';m=sm.days+' of 7 days, '+sm.min+' minutes. Current streak: '+s+' days.';goTxt='Open calendar';act='cal'}
+  else{t='Test alert';m='This is how Mindful Buddy alerts look on this device.'}
+  bannerKind={kind,act};$('#bt').textContent=t;$('#bm').textContent=' '+m;$('#bgo').hidden=!goTxt;$('#bgo').textContent=goTxt||'';$('#bsn').hidden=!snooze;$('#bsn').textContent='Snooze '+A.snooze+' min';$('#banner').hidden=false;
+  if(A.style==='vibrate'){try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}}else if(A.style==='sound'&&!document.hidden&&kind!=='goal')bell(1);
+  if(kind!=='stress')notify(t,m,{tag:'vp-'+kind,force:kind==='test',actions:act&&act!=='cal'?[{action:act,title:goTxt}]:undefined})}
+$('#ntest').onclick=()=>fire('test');
+$('#bx').onclick=()=>{$('#banner').hidden=true};
+$('#bsn').onclick=()=>{A.snoozeAt=Date.now()+A.snooze*60000;save();$('#banner').hidden=true;toast('Snoozed for '+A.snooze+' minutes')};
+$('#bgo').onclick=()=>{$('#banner').hidden=true;const a=bannerKind&&bannerKind.act;if(a==='cal')openCal();else if(a)startProg(a)};
+function due(t,win){const n=new Date(),tg=new Date();const p=t.split(':');tg.setHours(+p[0],+p[1],0,0);const df=n-tg;return df>=0&&df<win*60000}
+function once(key,fn){const today=dk();if(A.fired[key])return;for(const k in A.fired)if(!k.includes(today))delete A.fired[k];A.fired[key]=1;save();fn()}
+function check(){const n=new Date(),today=dk(),o=dayMins(),done=(o[today]||0)>0;
+  if(A.snoozeAt&&Date.now()>=A.snoozeAt){A.snoozeAt=0;save();fire('remind',{label:'snoozed'});return}
+  if(inQuiet())return;
+  if(A.remind.on&&!done&&A.remind.days.includes(n.getDay()))A.remind.times.forEach(t=>{if(due(t,90))once('r '+today+' '+t,()=>fire('remind',{label:t}))});
+  if(A.saver.on&&!done&&streaks(o)[0]>0&&due(A.saver.time,180))once('s '+today,()=>fire('saver'));
+  if(A.weekly.on&&n.getDay()===+A.weekly.day&&due(A.weekly.time,240))once('w '+today,()=>fire('weekly'));
+  if(A.pinned)widget()}
+
+/* alerts tab controls */
+function aui(){
+  [['remind'],['saver'],['bells'],['stress'],['goal'],['weekly'],['quiet']].forEach(([k])=>{const c=$('#a-'+k);c.checked=A[k].on;const m=$('#o-'+k);if(m)m.hidden=!A[k].on;
+    c.onchange=()=>{A[k].on=c.checked;save();aui();if(c.checked&&perm()==='default'&&k!=='quiet'&&k!=='stress')toast('Tap Allow notifications to get these outside the app')}});
+  $('#rtimes').innerHTML=A.remind.times.map((t,i)=>`<div class="tm"><input type="time" value="${t}" data-i="${i}" aria-label="Reminder time ${i+1}">${A.remind.times.length>1?`<button class="btn text small" data-r="${i}">Remove</button>`:''}</div>`).join('');
+  $$('#rtimes input').forEach(e=>e.onchange=()=>{A.remind.times[+e.dataset.i]=e.value||'07:00';save();calLink()});
+  $$('#rtimes button').forEach(b=>b.onclick=()=>{A.remind.times.splice(+b.dataset.r,1);save();aui()});
+  $('#radd').hidden=A.remind.times.length>=3;
+  $('#rdays').innerHTML=DN.map((d,i)=>`<button aria-pressed="${A.remind.days.includes(i)}" data-d="${i}">${d}</button>`).join('');
+  $$('#rdays button').forEach(b=>b.onclick=()=>{const i=+b.dataset.d,p=A.remind.days.indexOf(i);if(p>-1){if(A.remind.days.length>1)A.remind.days.splice(p,1)}else A.remind.days.push(i);save();aui()});
+  $('#rmsg').value=A.remind.msg||'';$('#savt').value=A.saver.time;$('#sth').value=String(A.stress.th);
+  $('#wkd').innerHTML=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map((d,i)=>`<option value="${i}">${d}</option>`).join('');$('#wkd').value=String(A.weekly.day);$('#wkt').value=A.weekly.time;
+  $('#qf').value=A.quiet.from;$('#qt').value=A.quiet.to;
+  $$('#astyle button').forEach(b=>{b.setAttribute('aria-pressed',A.style===b.dataset.s);b.onclick=()=>{A.style=b.dataset.s;save();aui()}});
+  $('#asnz').innerHTML=[5,10,20,30].map(n=>`<button aria-pressed="${A.snooze===n}" data-n="${n}">${n} min</button>`).join('');
+  $$('#asnz button').forEach(b=>b.onclick=()=>{A.snooze=+b.dataset.n;save();aui()});
+  calLink();nstat()}
+$('#radd').onclick=()=>{A.remind.times.push('18:00');save();aui()};
+$('#rmsg').onchange=function(){A.remind.msg=this.value.trim();save()};
+$('#savt').onchange=function(){A.saver.time=this.value||'20:30';save()};
+$('#sth').onchange=function(){A.stress.th=+this.value;save()};
+$('#wkd').onchange=function(){A.weekly.day=+this.value;save()};$('#wkt').onchange=function(){A.weekly.time=this.value||'19:00';save()};
+$('#qf').onchange=function(){A.quiet.from=this.value||'22:00';save()};$('#qt').onchange=function(){A.quiet.to=this.value||'06:30';save()};
+function calLink(){const t=(A.remind.times[0]||'07:00').split(':'),s=new Date();s.setHours(+t[0],+t[1],0,0);const e=new Date(s.getTime()+mins().reduce((a,b)=>a+b,0)*60000),
+  f=d=>d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'T'+pad(d.getHours())+pad(d.getMinutes())+'00',
+  B=['SU','MO','TU','WE','TH','FR','SA'],r=A.remind.days.length===7?'FREQ=DAILY':'FREQ=WEEKLY;BYDAY='+A.remind.days.slice().sort().map(i=>B[i]).join(',');
+  $('#cal').href='https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent('Vipassana sit')+'&details='+encodeURIComponent('Daily Vipassana practice')+'&dates='+f(s)+'/'+f(e)+'&recur='+encodeURIComponent('RRULE:'+r)}
+
+/* ---------- tabs and settings ---------- */
+const TABS=['today','prog','widget','alerts','more'];
+function go(t){TABS.forEach(k=>$('#tab-'+k).hidden=k!==t);$$('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.t===t));window.scrollTo(0,0);if(t==='widget')widget()}
+$$('#tabs button').forEach(b=>b.onclick=()=>go(b.dataset.t));
+function th(){$('#themes').innerHTML=['auto','light','dark'].map(k=>`<button aria-pressed="${cfg.theme===k}" data-k="${k}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('');
+  $$('#themes button').forEach(b=>b.onclick=()=>{cfg.theme=b.dataset.k;save();theme();th()})}
+$('#mute').checked=cfg.mute;$('#mute').onchange=function(){cfg.mute=this.checked;save()};
+$('#goal').value=cfg.goal;$('#gv').textContent=cfg.goal+' min';$('#goal').oninput=function(){cfg.goal=+this.value;$('#gv').textContent=cfg.goal+' min';save();render()};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){check();render()}});
+function startProg(p){if(stt==='run'||stt==='pause'){go('today');return}if(PR[p]){cfg.prog=p;save();chips()}reset();go('today');start()}
+
+/* ---------- files, install, QR ---------- */
+function saveFile(name,data){try{const b=data instanceof Blob?data:new Blob([data],{type:'application/pdf'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);toast('File saved')}catch(e){toast('Could not save the file')}}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').then(r=>{swr=r;return regSync()}).then(s=>{bgSync=s||bgSync;wStatus();if(A.pinned)widget(true)}).catch(()=>{});
+  navigator.serviceWorker.addEventListener('message',e=>{if(e.data&&e.data.start)e.data.start==='cal'?openCal():startProg(e.data.start)})}
+let ip=null;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();ip=e;$('#inst').hidden=false});
+$('#inst').onclick=()=>{if(ip){ip.prompt();ip=null;$('#inst').hidden=true}};
+$('#qurl').value=location.href.split('#')[0].split('?')[0].replace(/index\.html$/,'');
+function qr(){const b=$('#qr');b.innerHTML='';const u=$('#qurl').value.trim();if(u&&window.QRCode){try{new QRCode(b,{text:u,width:180,height:180,correctLevel:QRCode.CorrectLevel.M})}catch(e){}}}
+$('#qurl').oninput=qr;window.addEventListener('load',qr);
+$('#qsave').onclick=()=>{const c=$('#qr canvas');if(!c){toast('The QR code is not ready');return}c.toBlob(bl=>saveFile('mindful-buddy-qr.png',bl))};
+
+/* ---------- PDF reports ---------- */
+function pdf(kind){if(!window.jspdf){toast('The PDF tool did not load. Check your connection.');return}
+  const n=kind==='daily'?1:7,end=new Date(),st=new Date();st.setDate(st.getDate()-(n-1));st.setHours(0,0,0,0);
+  const fd=(d,w)=>d.toLocaleDateString('en-GB',w?{weekday:'short',day:'numeric',month:'short'}:{day:'numeric',month:'short',year:'numeric'});
+  const S=hist.filter(h=>{const t=new Date(h.d);return t>=st&&t<=end}).reverse(),o=dayMins(),sum=(a,k)=>a.reduce((x,h)=>x+(h[k]||0),0);
+  const J=window.jspdf.jsPDF,d=new J({unit:'pt',format:'a4'}),L=48;let y=60;
+  function T(s,sz,b,c){d.setFont('helvetica',b?'bold':'normal');d.setFontSize(sz);d.setTextColor.apply(d,c||[23,28,26]);d.splitTextToSize(String(s),500).forEach(l=>{if(y>790){d.addPage();y=60}d.text(l,L,y);y+=sz+5})}
+  const min=sum(S,'min'),goal=cfg.goal*n;
+  T('Mindful Buddy Practice Summary',22,1,[44,107,95]);T(kind==='daily'?'Daily summary: '+fd(end):'Weekly summary: '+fd(st)+' to '+fd(end),12,0,[91,98,94]);y+=8;
+  T('Sessions: '+S.length+'   Minutes: '+min,13,1);T('Goal: '+min+' of '+goal+' min ('+Math.round(min/goal*100)+'%)   Current streak: '+streaks(o)[0]+' days',11);
+  if(S.length){const ap=sum(S,'pre')/S.length,aq=sum(S,'post')/S.length;T('Average stress before: '+ap.toFixed(1)+'/10, after: '+aq.toFixed(1)+'/10 (change '+(aq-ap>0?'+':'')+(aq-ap).toFixed(1)+')',11);T('Average focus rating: '+Math.round(sum(S,'sc')/S.length)+'/100',11)}else T('No sessions were recorded in this period.',11);
+  y+=10;
+  if(n>1){T('Minutes per day',13,1);const y0=y+112,dm=[];let mx=cfg.goal;for(let i=0;i<7;i++){const dd=new Date(st);dd.setDate(st.getDate()+i);dm.push([DN[dd.getDay()],o[dk(dd)]||0]);mx=Math.max(mx,dm[i][1])}
+    for(let i=0;i<7;i++){const h=dm[i][1]/mx*100;d.setFillColor(44,107,95);d.rect(L+i*70,y0-h,40,h,'F');d.setFontSize(9);d.setTextColor(91,98,94);d.text(dm[i][0],L+i*70+12,y0+12);d.text(String(dm[i][1]),L+i*70+14,y0-h-4)}
+    const gy=y0-cfg.goal/mx*100;d.setDrawColor(168,102,15);d.line(L,gy,L+490,gy);d.text('daily goal',L+440,gy-4);y=y0+36}
+  T('Sessions',13,1);if(!S.length)T('None',10,0,[91,98,94]);
+  S.forEach(h=>{const t=new Date(h.d);T(fd(t,1)+' '+t.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+'  |  '+h.min+' min  |  stress '+h.pre+' to '+h.post+'  |  focus '+h.sc+'/100'+(h.nt?'  |  '+h.nt:''),10)});
+  y+=14;T('These figures come from your own ratings. They are for personal reflection and are not medical advice.',9,0,[91,98,94]);
+  saveFile('mindful-buddy-'+kind+'-'+end.toISOString().slice(0,10)+'.pdf',d.output('arraybuffer'))}
+$('#pd').onclick=()=>pdf('daily');$('#pw').onclick=()=>pdf('weekly');
+
+/* ---------- boot ---------- */
+(async()=>{try{const c=await caches.open('mb-state'),r=await c.match(new URL('state.json',location.href).href);if(r){const s=await r.json();if(s.fired)Object.assign(A.fired,s.fired)}}catch(e){}})();
+theme();th();chips();aui();reset();render();check();setInterval(check,20000);
+(()=>{const q=new URLSearchParams(location.search),s=q.get('start'),t=q.get('tab');
+  if(s||t)history.replaceState(null,'',location.pathname);
+  if(t==='cal')openCal();else if(t&&TABS.includes(t))go(t);
+  if(s&&PR[s])startProg(s)})();
+</script>
+</body>
+</html>
